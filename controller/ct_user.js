@@ -4,6 +4,7 @@ import createAsyncError from "../middleware/createAsyncError.js";
 import tbl_product from "../model/tbl_product.js";
 import nodemailer from "nodemailer";
 import cron from "node-cron";
+import tbl_check from "../model/tbl_check.js";
 const passwordRegex =
   /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
@@ -159,48 +160,134 @@ const createChekPro = createAsyncError(async (req, res) => {
       return res.status(401).json({ message: "product id not get" });
     }
     const getpro = await tbl_product.findById({ _id: productId });
-    if (getpro) {
+    if (!getpro) {
+      return res.status(401).json({ message: "product not get" });
     }
+    const check = await tbl_check.find({
+      productId,
+      userId: req.userInfo._id,
+    });
+    if (check.length > 0) {
+      return res.status(200).json({ message: "already check product" });
+    }
+    const create = await tbl_check.create({
+      productId,
+      userId: req.userInfo._id,
+    });
+    res.status(201).json({ message: "check the product" });
   } catch (err) {
     res.status(500).json({ message: "something went wrong", err: err.message });
   }
 });
 
-// cron.schedule("*/30 * * * * *", async () => {
-//   try {
-//     const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+const updateChekPro = createAsyncError(async (req, res) => {
+  const { productId } = req.body;
+  try {
+    if (!productId) {
+      return res.status(401).json({ message: "product id not get" });
+    }
+    const getpro = await tbl_product.findById({ _id: productId });
+    if (!getpro) {
+      return res.status(401).json({ message: "product not get" });
+    }
+    const check = await tbl_check.find({
+      productId,
+      userId: req.userInfo._id,
+    });
+    if (check.length > 0) {
+      const update = await tbl_check.updateOne(
+        {
+          productId,
+          userId: req.userInfo._id,
+        },
+        { checkpro: true },
+        { new: true, runValidators: true, useFindAndModify: false }
+      );
 
-//     // const inactiveUsers = await tbl_user.find({
-//     //   lastOnlineTime: { $lt: fiveDaysAgo },
-//     // });
-//     const inactiveUsers = await tbl_user.find({});
-//     await sendEmail(inactiveUsers);
-//   } catch (error) {
-//     console.error("Error triggering inactive user notifications:", error);
-//   }
-// });
-// const sendEmail = async (option) => {
-//   let transporter = nodemailer.createTransport({
-//     host: "smtp.gmail.com",
-//     port: 587,
-//     secure: false,
+      return res.status(200).json({ message: "buy succussfully" });
+    }
 
-//     auth: {
-//       user: "sinhathailesh@gmail.com",
-//       pass: "jqvdilpoqyclznny",
-//     },
-//   });
+    res.status(201).json({ message: "check the product" });
+  } catch (err) {
+    res.status(500).json({ message: "something went wrong", err: err.message });
+  }
+});
 
-//   const allList = await Promise.all(
-//     option.map(async (e) => {
-//       const mailOptions = {
-//         from: "sinhathailesh@gmail.com",
-//         to: e.email,
-//         subject: "this mail for make fun",
-//         text: `check you mail ${e.name}`,
-//       };
-//       await transporter.sendMail(mailOptions);
-//     })
-//   );
-// };
-export { createUser, loginUser, uploadProduct, getProduct, getOneProduct };
+cron.schedule("*/30 * * * * *", async () => {
+  try {
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+
+    const inactiveUsers = await tbl_user.find({
+      lastOnlineTime: { $lt: fiveDaysAgo },
+    });
+    const notBuyUser = await tbl_check.find({
+      updatedAt: { $lt: fiveDaysAgo },
+      checkpro: false,
+    });
+    await sendEmail(inactiveUsers);
+    await sendEmailtoBuy(notBuyUser);
+  } catch (error) {
+    console.error("Error triggering inactive user notifications:", error);
+  }
+});
+const sendEmail = async (option) => {
+  let transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+
+    auth: {
+      user: "sinhathailesh@gmail.com",
+      pass: "jqvdilpoqyclznny",
+    },
+  });
+
+  const allList = await Promise.all(
+    option.map(async (e) => {
+      const mailOptions = {
+        from: "sinhathailesh@gmail.com",
+        to: e.email,
+        subject: "this mail for make fun",
+        text: `check you mail ${e.name}`,
+      };
+      await transporter.sendMail(mailOptions);
+    })
+  );
+};
+
+const sendEmailtoBuy = async (option) => {
+  let transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+
+    auth: {
+      user: "sinhathailesh@gmail.com",
+      pass: "jqvdilpoqyclznny",
+    },
+  });
+
+  const allList = await Promise.all(
+    option.map(async (e) => {
+      const findUser = await tbl_user.findById({ _id: e.userId });
+      const findProduct = await tbl_product.findById({ _id: e.productId });
+      const mailOptions = {
+        from: "sinhathailesh@gmail.com",
+        to: findUser.email,
+        subject: "to reminder a buy product",
+        text: `buy this product ${findProduct._id} go to this link https://check-frontend.vercel.app/product/${e.productId}`,
+      };
+      await transporter.sendMail(mailOptions);
+    })
+  );
+};
+
+export {
+  createUser,
+  loginUser,
+  uploadProduct,
+  getProduct,
+  getOneProduct,
+  createChekPro,
+  updateChekPro,
+};

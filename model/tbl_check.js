@@ -2,11 +2,9 @@ import mongoose from "mongoose";
 
 const userSchema = mongoose.Schema(
   {
-    addpro: {
-      type: String,
-    },
     checkpro: {
       type: String,
+      default: false,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
