@@ -15,9 +15,7 @@ const createUser = createAsyncError(async (req, res) => {
 
   try {
     if (!email || !password || !name) {
-      return res
-        .status(401)
-        .json({ message: "please fill the form properly", x: req.body });
+      return res.status(401).json({ message: "please fill the form properly" });
     }
     // const existemail = await tbl_user.find({
     //   $or: [{ email: email }, { mobile: mobile }],
@@ -97,11 +95,12 @@ const loginUser = createAsyncError(async (req, res) => {
 });
 
 const uploadProduct = createAsyncError(async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, price } = req.body;
   try {
     const createpro = await tbl_product.create({
       title,
       description,
+      price,
       imagePath: req.file.path,
       postedBy: req.userInfo._id,
     });
@@ -118,7 +117,7 @@ const getProduct = createAsyncError(async (req, res) => {
       return res.status(401).json({ message: "user not found" });
     }
 
-    const getpro = await tbl_product.find({ postedBy: getuser._id });
+    const getpro = await tbl_product.find({});
 
     const getall = await Promise.all(
       getpro.map(async (e) => {
@@ -128,6 +127,7 @@ const getProduct = createAsyncError(async (req, res) => {
           postedBy: e.postedBy,
           description: e.description,
           imagePath: e.imagePath,
+          price: e.price,
         };
         return resp;
       })
@@ -139,41 +139,68 @@ const getProduct = createAsyncError(async (req, res) => {
   }
 });
 
-cron.schedule("*/30 * * * * *", async () => {
+const getOneProduct = createAsyncError(async (req, res) => {
+  const { productId } = req.body;
   try {
-    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
-
-    // const inactiveUsers = await tbl_user.find({
-    //   lastOnlineTime: { $lt: fiveDaysAgo },
-    // });
-    const inactiveUsers = await tbl_user.find({});
-    await sendEmail(inactiveUsers);
-  } catch (error) {
-    console.error("Error triggering inactive user notifications:", error);
+    if (!productId) {
+      return res.status(401).json({ message: "product id not get" });
+    }
+    const getpro = await tbl_product.findById({ _id: productId });
+    res.status(200).json({ getpro: getpro });
+  } catch (err) {
+    res.status(500).json({ message: "something went wrong", err: err.message });
   }
 });
-const sendEmail = async (option) => {
-  let transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
 
-    auth: {
-      user: "sinhathailesh@gmail.com",
-      pass: "jqvdilpoqyclznny",
-    },
-  });
+const createChekPro = createAsyncError(async (req, res) => {
+  const { productId } = req.body;
+  try {
+    if (!productId) {
+      return res.status(401).json({ message: "product id not get" });
+    }
+    const getpro = await tbl_product.findById({ _id: productId });
+    if (getpro) {
+    }
+  } catch (err) {
+    res.status(500).json({ message: "something went wrong", err: err.message });
+  }
+});
 
-  const allList = await Promise.all(
-    option.map(async (e) => {
-      const mailOptions = {
-        from: "sinhathailesh@gmail.com",
-        to: e.email,
-        subject: "this mail for make fun",
-        text: `check you mail ${e.name}`,
-      };
-      await transporter.sendMail(mailOptions);
-    })
-  );
-};
-export { createUser, loginUser, uploadProduct, getProduct };
+// cron.schedule("*/30 * * * * *", async () => {
+//   try {
+//     const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+
+//     // const inactiveUsers = await tbl_user.find({
+//     //   lastOnlineTime: { $lt: fiveDaysAgo },
+//     // });
+//     const inactiveUsers = await tbl_user.find({});
+//     await sendEmail(inactiveUsers);
+//   } catch (error) {
+//     console.error("Error triggering inactive user notifications:", error);
+//   }
+// });
+// const sendEmail = async (option) => {
+//   let transporter = nodemailer.createTransport({
+//     host: "smtp.gmail.com",
+//     port: 587,
+//     secure: false,
+
+//     auth: {
+//       user: "sinhathailesh@gmail.com",
+//       pass: "jqvdilpoqyclznny",
+//     },
+//   });
+
+//   const allList = await Promise.all(
+//     option.map(async (e) => {
+//       const mailOptions = {
+//         from: "sinhathailesh@gmail.com",
+//         to: e.email,
+//         subject: "this mail for make fun",
+//         text: `check you mail ${e.name}`,
+//       };
+//       await transporter.sendMail(mailOptions);
+//     })
+//   );
+// };
+export { createUser, loginUser, uploadProduct, getProduct, getOneProduct };

@@ -8,8 +8,8 @@ const userSchema = mongoose.Schema(
     description: {
       type: String,
     },
-    feelingName: {
-      type: String,
+    price: {
+      type: Number,
     },
     imagePath: {
       type: String,

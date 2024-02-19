@@ -4,6 +4,7 @@ import {
   loginUser,
   uploadProduct,
   getProduct,
+  getOneProduct,
 } from "../controller/ct_user.js";
 import { isAuthenticatedUser } from "../middleware/auth.js";
 import multer from "multer";
@@ -26,5 +27,6 @@ router
   .post(isAuthenticatedUser, upload.single("image"), uploadProduct);
 // router.route("/getproduct").post(getProduct);
 router.route("/getproduct").post(isAuthenticatedUser, getProduct);
+router.route("/getoneproduct").post(isAuthenticatedUser, getOneProduct);
 
 export default router;
