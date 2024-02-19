@@ -220,12 +220,14 @@ cron.schedule("0 17 * * *", async () => {
     const inactiveUsers = await tbl_user.find({
       lastOnlineTime: { $lt: fiveDaysAgo },
     });
-    // await sendEmail(inactiveUsers);
+    await sendEmail(inactiveUsers);
     const notBuyUser = await tbl_check.find({
       updatedAt: { $lt: fiveDaysAgo },
       checkpro: false,
     });
-    await sendEmailtoBuy(notBuyUser);
+    if (notBuyUser.length > 0) {
+      await sendEmailtoBuy(notBuyUser);
+    }
   } catch (error) {
     console.error("Error triggering inactive user notifications:", error);
   }
